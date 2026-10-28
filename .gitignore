@@ -1,0 +1,10 @@
+# Generated build and IDE files
+**/bin/
+**/obj/
+.vs/
+*.user
+*.suo
+TestResults/
+dist/
+*.zip
+*.log
