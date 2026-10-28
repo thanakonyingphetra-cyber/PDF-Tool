@@ -47,10 +47,10 @@ jobs:
         shell: pwsh
         run: dotnet run --project tests/PdfTool.SmokeTests/PdfTool.SmokeTests.csproj --configuration Release --no-restore
 
-      - name: Publish self-contained Windows x64 executable
+      - name: Publish self-contained Windows x64 portable folder
         shell: pwsh
         run: |
-          dotnet publish src/PdfTool/PdfTool.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false --output "$env:RUNNER_TEMP\pdf-tool-portable"
+          dotnet publish src/PdfTool/PdfTool.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=false -p:PublishTrimmed=false --output "$env:RUNNER_TEMP\pdf-tool-portable"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $app = Join-Path $env:RUNNER_TEMP 'pdf-tool-portable\PDF-Tool.exe'
           if (-not (Test-Path $app)) { throw 'Portable executable not found' }
@@ -63,6 +63,7 @@ jobs:
           if (-not (Test-Path $resultFile)) { throw 'Startup self-test did not produce a result' }
           Get-Content $resultFile
           Get-ChildItem "$env:RUNNER_TEMP\pdf-tool-portable" -Filter *.pdb | Remove-Item -Force
+          Copy-Item tools/CHECK-STARTUP.cmd "$env:RUNNER_TEMP\pdf-tool-portable\CHECK-STARTUP.cmd"
           Copy-Item README.md "$env:RUNNER_TEMP\pdf-tool-portable\README.md"
           Copy-Item THIRD_PARTY_NOTICES.md "$env:RUNNER_TEMP\pdf-tool-portable\THIRD_PARTY_NOTICES.md"
           Copy-Item docs/IT-APPROVAL-CHECKLIST.md "$env:RUNNER_TEMP\pdf-tool-portable\IT-APPROVAL-CHECKLIST.md"
