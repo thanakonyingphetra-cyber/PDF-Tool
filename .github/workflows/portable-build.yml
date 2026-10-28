@@ -33,7 +33,11 @@ jobs:
 
       - name: Restore dependencies
         shell: pwsh
-        run: dotnet restore tests/PdfTool.SmokeTests/PdfTool.SmokeTests.csproj
+        run: |
+          dotnet restore src/PdfTool/PdfTool.csproj
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet restore tests/PdfTool.SmokeTests/PdfTool.SmokeTests.csproj
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Build app
         shell: pwsh
