@@ -54,6 +54,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $app = Join-Path $env:RUNNER_TEMP 'pdf-tool-portable\PDF-Tool.exe'
           if (-not (Test-Path $app)) { throw 'Portable executable not found' }
+          $resultFile = Join-Path $env:RUNNER_TEMP 'pdf-tool-startup-test.txt'
+          & $app --self-test $resultFile
+          if ($LASTEXITCODE -ne 0) {
+            if (Test-Path $resultFile) { Get-Content $resultFile }
+            throw 'Portable GUI startup self-test failed'
+          }
+          if (-not (Test-Path $resultFile)) { throw 'Startup self-test did not produce a result' }
+          Get-Content $resultFile
           Get-ChildItem "$env:RUNNER_TEMP\pdf-tool-portable" -Filter *.pdb | Remove-Item -Force
           Copy-Item README.md "$env:RUNNER_TEMP\pdf-tool-portable\README.md"
           Copy-Item THIRD_PARTY_NOTICES.md "$env:RUNNER_TEMP\pdf-tool-portable\THIRD_PARTY_NOTICES.md"
