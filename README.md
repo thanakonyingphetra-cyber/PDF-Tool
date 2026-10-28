@@ -21,7 +21,7 @@ password tools and page previews. See [roadmap](docs/ROADMAP.md).
 ## Portable packaging
 
 GitHub Actions compiles on a Windows runner with .NET 10 SDK, executes
-smoke tests and publishes a self-contained, single-file target for Windows x64.
+smoke tests and publishes a self-contained **portable folder** for Windows x64. Keep all runtime files together; the EXE by itself is insufficient.
 A successful workflow produces the build artifact:
 
 `PDF-Tool-Portable-win-x64` containing `PDF-Tool-Portable-win-x64.zip`
@@ -32,7 +32,8 @@ To test after a successful run:
 2. Select the successful workflow run and download the artifact.
 3. Extract the outer artifact ZIP, then the portable ZIP.
 4. Have IT/security approve and scan it before running on a company machine.
-5. On an approved test Windows 10/11 x64 computer, run `PDF-Tool.exe`.
+5. On an approved test Windows 10/11 x64 computer, extract the **whole ZIP folder**, then run `PDF-Tool.exe`. Keep the accompanying DLL/runtime files together.
+6. If double-clicking the EXE seems to do nothing, run `CHECK-STARTUP.cmd` from the extracted folder. Read its status and contact IT if security software blocked execution. Do not disable antivirus or bypass company policy.
 
 If the build fails or no artifact is present, there is **no validated downloadable EXE** yet.
 Unsigned binaries may produce Microsoft SmartScreen/enterprise endpoint warnings.
@@ -47,10 +48,10 @@ dotnet restore src/PdfTool/PdfTool.csproj
 dotnet run --project src/PdfTool/PdfTool.csproj
 ```
 
-For a self-contained build:
+For a self-contained portable **folder** build:
 
 ```powershell
-dotnet publish src/PdfTool/PdfTool.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -o dist/portable
+dotnet publish src/PdfTool/PdfTool.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -p:PublishTrimmed=false -o dist/portable
 ```
 
 Never use sensitive company PDFs for initial tests. PDFs can be malformed;
