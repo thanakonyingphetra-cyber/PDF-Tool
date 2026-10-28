@@ -1,0 +1,76 @@
+name: Build and test Windows portable app
+
+on:
+  push:
+    branches: [main, feature/windows-pdf-tool-v0.1]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: portable-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and smoke-test (Windows x64)
+    runs-on: windows-2022
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        shell: pwsh
+        run: dotnet restore tests/PdfTool.SmokeTests/PdfTool.SmokeTests.csproj
+
+      - name: Build app
+        shell: pwsh
+        run: dotnet build src/PdfTool/PdfTool.csproj --configuration Release --no-restore
+
+      - name: Run local PDF smoke tests
+        shell: pwsh
+        run: dotnet run --project tests/PdfTool.SmokeTests/PdfTool.SmokeTests.csproj --configuration Release --no-restore
+
+      - name: Publish self-contained Windows x64 executable
+        shell: pwsh
+        run: |
+          dotnet publish src/PdfTool/PdfTool.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false --output "$env:RUNNER_TEMP\pdf-tool-portable"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $app = Join-Path $env:RUNNER_TEMP 'pdf-tool-portable\PDF-Tool.exe'
+          if (-not (Test-Path $app)) { throw 'Portable executable not found' }
+          Get-ChildItem "$env:RUNNER_TEMP\pdf-tool-portable" -Filter *.pdb | Remove-Item -Force
+          Copy-Item README.md "$env:RUNNER_TEMP\pdf-tool-portable\README.md"
+          Copy-Item THIRD_PARTY_NOTICES.md "$env:RUNNER_TEMP\pdf-tool-portable\THIRD_PARTY_NOTICES.md"
+          Copy-Item docs/IT-APPROVAL-CHECKLIST.md "$env:RUNNER_TEMP\pdf-tool-portable\IT-APPROVAL-CHECKLIST.md"
+
+      - name: Create ZIP and checksum
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          $zip = Join-Path (Resolve-Path dist) 'PDF-Tool-Portable-win-x64.zip'
+          Compress-Archive -Path "$env:RUNNER_TEMP\pdf-tool-portable\*" -DestinationPath $zip -Force
+          $sha256 = (Get-FileHash -Algorithm SHA256 -Path $zip).Hash.ToLowerInvariant()
+          Set-Content -Path "$zip.sha256" -Encoding utf8 -Value "$sha256  PDF-Tool-Portable-win-x64.zip"
+          Write-Host "SHA256: $sha256"
+
+      - name: Upload build artifact (NOT a signed release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: PDF-Tool-Portable-win-x64
+          path: |
+            dist/PDF-Tool-Portable-win-x64.zip
+            dist/PDF-Tool-Portable-win-x64.zip.sha256
+          if-no-files-found: error
+          retention-days: 14
